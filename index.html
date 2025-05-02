@@ -62,7 +62,7 @@
     <div class="item">Life：<span id="lifeSpan">1</span></div>
     <div class="item">Score：<span id="scoreDiv">0</span></div>
   </div>
-
+  
   <div class="start-message" id="startMessage">按滑鼠右鍵開始遊戲</div>
 
   <div class="square" id="main"></div>
@@ -80,7 +80,7 @@
     let score = 0;
     let lives = 1; 
     let isGameStart = false;
-
+    
     class Bar {
       constructor() {
         this.width = 60;
@@ -98,6 +98,7 @@
       }
       update() {
         this.element.style.left = this.x + 'px';
+        this.element.style.top = this.y + 'px';
       }
     }
 
@@ -144,7 +145,6 @@
         this.element.style.top = this.y + 'px';
       }
       checkCollision(bar, bricks) {
-       
         if (
           this.y + this.radius * 2 >= bar.y &&
           this.x + this.radius * 2 >= bar.x &&
@@ -178,7 +178,7 @@
               resetGame();
             }
           }
-        }
+        })
       }
     }
 
