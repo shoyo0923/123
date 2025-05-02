@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>打磚塊遊戲 - 一次機會直接開始</title>
+  <style>
+    .myBody {
+      font-size: 20px;
+      background-color: rgba(140, 200, 240, 0.5);
+    }
+    .square {
+      position: relative;
+      width: 681px;
+      height: 550px;
+      border: solid 2px black;
+      margin: auto;
+    }
+    .bar {
+      position: absolute;
+      bottom: 5px;
+      left: calc(50% - 30px);
+      width: 60px;
+      height: 15px;
+      border: solid 2px black;
+      border-radius: 3px;
+      background-color: red;
+    }
+    .brick {
+      position: absolute;
+      width: 60px;
+      height: 20px;
+      border-radius: 2px;
+      border: solid 1px black;
+      background-color: green;
+    }
+    .ball {
+      position: absolute;
+      background-color: black;
+      border-radius: 50%;
+      width: 15px;
+      height: 15px;
+    }
+    .flex {
+      display: flex;
+      width: 700px;
+      padding: 15px;
+      justify-content: space-between;
+      margin: auto;
+    }
+    .item {
+      font-size: 1.8rem;
+    }
+    .start-message {
+      text-align: center;
+      font-size: 1.5rem;
+      color: red;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body class="myBody">
+  <div class="flex">
+    <div class="item">Life：<span id="lifeSpan">1</span></div>
+    <div class="item">Score：<span id="scoreDiv">0</span></div>
+  </div>
+
+  <div class="start-message" id="startMessage">按滑鼠右鍵開始遊戲</div>
+
+  <div class="square" id="main"></div>
+
+  <script>
+    const boardWidth = 681;
+    const boardHeight = 550;
+    const brickRows = 5;
+    const brickCols = 11;
+    const brickWidth = 60;
+    const brickHeight = 20;
+    const brickPaddingX = 2;
+    const brickPaddingY = 2;
+
+    let score = 0;
+    let lives = 1; 
+    let isGameStart = false;
+
+    class Bar {
+      constructor() {
+        this.width = 60;
+        this.height = 15;
+        this.x = (boardWidth - this.width) / 2;
+        this.y = boardHeight - this.height - 5;
+        this.element = document.createElement('div');
+        this.element.classList.add('bar');
+        main.appendChild(this.element);
+        this.update();
+      }
+      move(x) {
+        this.x = Math.max(0, Math.min(boardWidth - this.width, x));
+        this.update();
+      }
+      update() {
+        this.element.style.left = this.x + 'px';
+      }
+    }
+
+    class Ball {
+      constructor() {
+        this.radius = 7.5;
+        this.x = boardWidth / 2 - this.radius;
+        this.y = boardHeight / 2 - this.radius;
+        this.dx = 2;
+        this.dy = -2;
+        this.element = document.createElement('div');
+        this.element.classList.add('ball');
+        main.appendChild(this.element);
+        this.update();
+      }
+      move() {
+        this.x += this.dx;
+        this.y += this.dy;
+
+       
+        if (this.x <= 0 || this.x >= boardWidth - this.radius * 2) this.dx *= -1;
+        if (this.y <= 0) this.dy *= -1;
+
+        
+        if (this.y >= boardHeight) {
+          lives--;
+          updateLives();
+          if (lives <= 0) {
+            alert('遊戲結束！');
+            resetGame();
+          } else {
+            this.reset();
+          }
+        }
+      }
+      reset() {
+        this.x = boardWidth / 2 - this.radius;
+        this.y = boardHeight / 2 - this.radius;
+        this.dx = 2;
+        this.dy = -2;
+      }
+      update() {
+        this.element.style.left = this.x + 'px';
+        this.element.style.top = this.y + 'px';
+      }
+      checkCollision(bar, bricks) {
+       
+        if (
+          this.y + this.radius * 2 >= bar.y &&
+          this.x + this.radius * 2 >= bar.x &&
+          this.x <= bar.x + bar.width
+        ) {
+          const hitPosition = (this.x + this.radius) - (bar.x + bar.width / 2);
+          const maxBounceAngle = Math.PI / 3;
+          const bounceAngle = (hitPosition / (bar.width / 2)) * maxBounceAngle;
+
+          const speed = Math.sqrt(this.dx * this.dx + this.dy * this.dy);
+          this.dx = speed * Math.sin(bounceAngle);
+          this.dy = -Math.abs(speed * Math.cos(bounceAngle));
+        }
+
+      
+        bricks.forEach((brick, index) => {
+          if (
+            this.x + this.radius * 2 >= brick.x &&
+            this.x <= brick.x + brickWidth &&
+            this.y + this.radius * 2 >= brick.y &&
+            this.y <= brick.y + brickHeight
+          ) {
+            this.dy *= -1;
+            main.removeChild(brick.element);
+            bricks.splice(index, 1);
+            score += 10;
+            updateScore();
+
+            if (bricks.length === 0) {
+              alert('恭喜你，遊戲勝利！');
+              resetGame();
+            }
+          }
+        }
+      }
+    }
+
+    class Brick {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.element = document.createElement('div');
+        this.element.classList.add('brick');
+        this.element.style.left = this.x + 'px';
+        this.element.style.top = this.y + 'px';
+        main.appendChild(this.element);
+      }
+    }
+
+    let bar, ball, bricks;
+
+    function initGame() {
+      bar = new Bar();
+      ball = new Ball();
+      bricks = [];
+
+      for (let row = 0; row < brickRows; row++) {
+        for (let col = 0; col < brickCols; col++) {
+          const x = col * (brickWidth + brickPaddingX);
+          const y = row * (brickHeight + brickPaddingY) + 40;
+          bricks.push(new Brick(x, y));
+        }
+      }
+    }
+
+    function resetGame() {
+      main.innerHTML = '';
+      score = 0;
+      lives = 1;
+      isGameStart = false;
+      updateScore();
+      updateLives();
+      document.getElementById('startMessage').style.display = 'block';
+      initGame();
+    }
+
+    function barMove(e) {
+      if (e.type === 'mousemove') {
+        const rect = main.getBoundingClientRect();
+        bar.move(e.clientX - rect.left - bar.width / 2);
+      } else if (e.type === 'keydown') {
+        if (e.code === 'ArrowLeft') bar.move(bar.x - 20);
+        if (e.code === 'ArrowRight') bar.move(bar.x + 20);
+      }
+    }
+
+    function updateScore() {
+      document.getElementById('scoreDiv').textContent = score;
+    }
+
+    function updateLives() {
+      document.getElementById('lifeSpan').textContent = lives;
+    }
+
+    function gameLoop() {
+      if (isGameStart) {
+        ball.move();
+        ball.checkCollision(bar, bricks);
+      }
+      bar.update();
+      ball.update();
+      requestAnimationFrame(gameLoop);
+    }
+
+    document.getElementById('main').addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (!isGameStart) {
+        isGameStart = true;
+        document.getElementById('startMessage').style.display = 'none';
+      }
+    });
+
+    document.addEventListener('keydown', barMove);
+    document.addEventListener('mousemove', barMove);
+
+    initGame();
+    gameLoop();
+  </script>
+</body>
+</html>
